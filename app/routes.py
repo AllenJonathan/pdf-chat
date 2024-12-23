@@ -174,6 +174,7 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     
     await websocket.accept()
     session_context = {}
+    print(session.query(Document).all())
 
     # Retrieve document text
     document = None
