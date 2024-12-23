@@ -164,6 +164,8 @@ html = """
 
 @app.get("/chat/{id}", dependencies=[Depends(RateLimiter(times=8, seconds=10))])
 async def get(id: int):
+    with Session() as session:
+        print(session.query(Document).all())
     new_html = html.replace('document_id": 1', f'document_id": {id}')
     new_html = new_html.replace("ws://localhost:8000/ws", f"ws://localhost:8000/ws/{id}")
     return HTMLResponse(new_html)
@@ -174,11 +176,12 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     
     await websocket.accept()
     session_context = {}
-    print(session.query(Document).all())
+    
 
     # Retrieve document text
     document = None
     with Session() as session:
+        print(session.query(Document).all())
         document = session.query(Document).filter(Document.id == int(id)).first()
     
     # check if document exists
