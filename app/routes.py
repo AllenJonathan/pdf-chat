@@ -11,9 +11,6 @@ import getpass
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
 import redis.asyncio as redis
-from math import ceil
-import sys
-
 
 app = FastAPI()
 
@@ -34,7 +31,7 @@ async def startup():
         os.environ['TOGETHER_API_KEY'] = getpass.getpass("Enter your Together API key: ")
 
 
-@app.post("/upload-pdf/")
+@app.post("/upload-pdf/", dependencies=[Depends(RateLimiter(times=8, seconds=10))])
 async def upload_pdf(file: UploadFile):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF.")
@@ -50,7 +47,6 @@ async def upload_pdf(file: UploadFile):
     pages = load_pdf(file_path)
     docs = split_text(pages)
     docs = dumps(docs)
-    print(docs)
 
     with Session() as db:
         document = Document(filename=file.filename, data=docs)
@@ -180,10 +176,6 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     
     await websocket.accept()
     session_context = {}
-
-    # while True:
-    #     data = await websocket.receive_text()
-    #     await websocket.send_text(f"Message text was: {data}")
 
     # Retrieve document text
     document = None
