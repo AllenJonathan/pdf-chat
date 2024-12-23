@@ -17,6 +17,10 @@ import sys
 
 app = FastAPI()
 
+port =  os.getenv("PORT")
+if not port:
+    port = '8000'
+
 @app.on_event("startup")
 async def startup():
     
@@ -135,7 +139,7 @@ html = """
     </form>
     <ul id="messages"></ul>
     <script>
-        const ws = new WebSocket("ws://localhost:10000/ws");
+        const ws = new WebSocket("ws://localhost:port/ws");
 
         ws.onmessage = function (event) {
             const messages = document.getElementById("messages");
@@ -167,7 +171,7 @@ async def get(id: int):
     with Session() as session:
         print(session.query(Document).all())
     new_html = html.replace('document_id": 1', f'document_id": {id}')
-    new_html = new_html.replace("ws://localhost:10000/ws", f"ws://localhost:10000/ws/{id}")
+    new_html = new_html.replace("ws://localhost:port/ws", f"ws://localhost:{port}/ws/{id}")
     print(html)
     return HTMLResponse(new_html)
 
