@@ -167,6 +167,10 @@ html = """
 @app.get("/chat/{id}", dependencies=[Depends(RateLimiter(times=8, seconds=10))])
 async def get(id: int):
     new_html = html.replace('document_id": 1', f'document_id": {id}')
+    # development
+    # new_html = new_html.replace("ws://localhost:port/ws", f"ws://localhost:{port}/ws")
+    
+    # for render
     new_html = new_html.replace("ws://localhost:port/ws", f"wss://pdf-chat-9g7n.onrender.com/ws/{id}")
     return HTMLResponse(new_html)
 
