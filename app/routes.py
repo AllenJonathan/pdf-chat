@@ -17,9 +17,7 @@ import sys
 
 app = FastAPI()
 
-port =  os.getenv("PORT")
-if not port:
-    port = '8000'
+port = os.getenv("PORT", "8000")
 
 @app.on_event("startup")
 async def startup():
@@ -171,7 +169,7 @@ async def get(id: int):
     with Session() as session:
         print(session.query(Document).all())
     new_html = html.replace('document_id": 1', f'document_id": {id}')
-    new_html = new_html.replace("ws://localhost:port/ws", f"ws://localhost:8000/ws/{id}")
+    new_html = new_html.replace("ws://localhost:port/ws", f"wss://localhost:8000/ws/{id}")
     print(html)
     return HTMLResponse(new_html)
 
