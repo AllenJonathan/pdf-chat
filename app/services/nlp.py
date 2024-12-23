@@ -1,14 +1,12 @@
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings
+from langchain_together import TogetherEmbeddings
 from langchain_groq import ChatGroq
 from langchain_community.vectorstores import DocArrayInMemorySearch
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-import os
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 text_splitter = CharacterTextSplitter(
     # shows how to seperate
@@ -39,7 +37,7 @@ def split_text(pages):
     return docs
 
 def build_retriever(docs):
-    embeddings = OllamaEmbeddings(model='znbang/bge:small-en-v1.5-f32')
+    embeddings = TogetherEmbeddings(model="togethercomputer/m2-bert-80M-8k-retrieval")
     # Creates the document retriever using docs and embeddings
     store = DocArrayInMemorySearch.from_documents(docs, embedding=embeddings)
     retriever = store.as_retriever()
@@ -61,7 +59,7 @@ def get_answer(docs, question):
     """
     # Converts the prompt into a prompt template
     prompt = ChatPromptTemplate.from_template(template)
-    llm = ChatGroq(temperature=0, groq_api_key=GROQ_API_KEY, model_name="mixtral-8x7b-32768")
+    llm = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768")
 
     print("Processing...")
 

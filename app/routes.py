@@ -1,18 +1,40 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, WebSocket, Depends
 from fastapi.responses import HTMLResponse
 from langchain_core.load import dumps, loads
+from starlette.websockets import WebSocketDisconnect
 from .services.nlp import load_pdf, split_text, get_answer
-from .models import Session, Document
-from fastapi import WebSocket
+from .models import Document, Session
 import shutil
+import os
+from dotenv import load_dotenv
+import getpass
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
+import redis.asyncio as redis
+
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    
+    redis_connection = redis.from_url("redis://default:jA2tUyt3zU55CArqB8GupKs2WeWdSutz@redis-12000.c62.us-east-1-4.ec2.redns.redis-cloud.com:12000", encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_connection)
+
+    BASEDIR = os.path.abspath(os.path.dirname(__file__))
+    load_dotenv(os.path.join(BASEDIR, '.env'))
+
+    if not os.getenv("GROQ_API_KEY"):
+        os.environ['GROQ_API_KEY'] = getpass.getpass("Enter your Groq API key: ")
+    if not os.getenv("TOGETHER_API_KEY"):
+        os.environ['TOGETHER_API_KEY'] = getpass.getpass("Enter your Together API key: ")
+
 
 @app.post("/upload-pdf/")
 async def upload_pdf(file: UploadFile):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF.")
-    
+
     # Save file to local storage
     file_path = f"static/uploaded_pdfs/{file.filename}"
     with open(file_path, "wb") as buffer:
@@ -138,7 +160,7 @@ html = """
 """
 
 
-@app.get("/chat/{id}")
+@app.get("/chat/{id}", dependencies=[Depends(RateLimiter(times=2, seconds=10))])
 async def get(id: int):
     new_html = html.replace('document_id": 1', f'document_id": {id}')
     new_html = new_html.replace("ws://localhost:8000/ws", f"ws://localhost:8000/ws/{id}")
@@ -162,18 +184,31 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
         return
     else:
         await websocket.send_text(f'file: {document.filename}')
+    
+    ratelimit = WebSocketRateLimiter(times=8, seconds=60)
 
-    try:
+    try: 
         while True:
-            data = await websocket.receive_json()
-            question = data["question"]
+            try:
+                data = await websocket.receive_json()
+                await ratelimit(websocket)
+                question = data["question"]
+                await websocket.send_text(f"You: {question}")
+                docs = loads(document.data)
 
-            await websocket.send_text(f"You: {question}")
-            
-            docs = loads(document.data)
-            # Generate answer
-            answer = get_answer(docs, question)
-            print(answer)
-            await websocket.send_text(f"Bot: {answer}")
-    except:
+                # Generate answer
+                answer = get_answer(docs, question)
+                print(answer)
+                await websocket.send_text(f"Bot: {answer}")
+            except WebSocketDisconnect as e:
+                print("disconnected")
+                break
+            except Exception as e:
+                print(f"Error processing request: {e}")
+                await websocket.send_text(f"Error: {str(e)}")
+                await websocket.close()
+    except Exception as e:
+        print(f"Connection error: {e}")
+    finally:
         await websocket.close()
+            
