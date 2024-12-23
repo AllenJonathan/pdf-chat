@@ -169,7 +169,7 @@ async def get(id: int):
     with Session() as session:
         print(session.query(Document).all())
     new_html = html.replace('document_id": 1', f'document_id": {id}')
-    new_html = new_html.replace("ws://localhost:port/ws", f"ws://pdf-chat-9g7n.onrender.com/ws/{id}")
+    new_html = new_html.replace("ws://localhost:port/ws", f"wss://pdf-chat-9g7n.onrender.com/ws/{id}")
     print(html)
     return HTMLResponse(new_html)
 
