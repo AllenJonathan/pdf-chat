@@ -41,14 +41,12 @@ def build_retriever(docs):
     # Creates the document retriever using docs and embeddings
     store = DocArrayInMemorySearch.from_documents(docs, embedding=embeddings)
     retriever = store.as_retriever()
-    print(retriever)
     return retriever
 
 def format_docs(docs):
   return "\n\n".join(doc.page_content for doc in docs)
 
 def get_answer(docs, question):
-    print(question)
     retriever = build_retriever(docs)
     template = """
     Answer the question based only on the context provided.

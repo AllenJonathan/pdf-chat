@@ -1,8 +1,10 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException, status
 from app.routes import app
 import os
+from time import sleep
 
 test_client = TestClient(app)
 
@@ -78,21 +80,28 @@ def test_rate_limiting_overload():
             data = websocket.receive_text()
             assert data.startswith("file:")
 
-            for _ in range(10):
+            for _ in range(2):
                 question_data = {"document_id": document_id, "question": "Rate limit test."}
                 websocket.send_json(question_data)
+                response = websocket.receive_text()
+                response = websocket.receive_text()
+                print(_,response)
+                assert response.startswith("You:") or response.startswith("Bot:")
             
-            with pytest.raises(Exception) as exc_info:   
-                raise Exception('Too Many Requests')
-                # these asserts are identical; you can use either one   
+            # Exceed the rate limit
+            for _ in range(2):  # Assuming the limit is 2 requests per 60 seconds
+                question_data = {"document_id": document_id, "question": "Exceed limit."}
+                websocket.send_json(question_data) 
             
-            assert str(exc_info.value) == 'Too Many Requests'
+                rate_limit_response = websocket.receive_text()
+                assert "429: Too Many Requests" in rate_limit_response
 
 def test_rate_limiting_normal_load():
     """Test the rate limiting for WebSocket and upload endpoints."""
     with open(TEST_FILE_PATH, "rb") as f:
         upload_response = test_client.post(UPLOAD_ENDPOINT, files={"file": (os.path.basename(TEST_FILE_PATH), f, "application/pdf")})
-    
+
+    # assert upload_response.status_code == 200
     document_id = upload_response.json()["id"]
 
     with TestClient(app) as tc:
@@ -100,12 +109,11 @@ def test_rate_limiting_normal_load():
             data = websocket.receive_text()
             assert data.startswith("file:")
 
-            for _ in range(3):
+            for _ in range(2):
                 question_data = {"document_id": document_id, "question": "Rate limit test."}
                 websocket.send_json(question_data)
-            
-            with pytest.raises(Exception) as exc_info:   
-                raise Exception('Too Many Requests')
-                # these asserts are identical; you can use either one   
-            
-            assert str(exc_info.value) == 'Too Many Requests'
+                client = websocket.receive_text()
+                bot = websocket.receive_text()
+                
+                assert client.startswith("You:") 
+                assert bot.startswith("Bot:")

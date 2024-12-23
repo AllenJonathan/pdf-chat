@@ -11,6 +11,8 @@ import getpass
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter, WebSocketRateLimiter
 import redis.asyncio as redis
+from math import ceil
+import sys
 
 
 app = FastAPI()
@@ -160,11 +162,12 @@ html = """
 """
 
 
-@app.get("/chat/{id}", dependencies=[Depends(RateLimiter(times=2, seconds=10))])
+@app.get("/chat/{id}", dependencies=[Depends(RateLimiter(times=8, seconds=10))])
 async def get(id: int):
     new_html = html.replace('document_id": 1', f'document_id": {id}')
     new_html = new_html.replace("ws://localhost:8000/ws", f"ws://localhost:8000/ws/{id}")
     return HTMLResponse(new_html)
+
 
 @app.websocket("/ws/{id}")
 async def websocket_endpoint(websocket: WebSocket, id: str):
@@ -185,7 +188,7 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     else:
         await websocket.send_text(f'file: {document.filename}')
     
-    ratelimit = WebSocketRateLimiter(times=8, seconds=60)
+    ratelimit = WebSocketRateLimiter(times=2, seconds=60)
 
     try: 
         while True:
@@ -198,11 +201,13 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
 
                 # Generate answer
                 answer = get_answer(docs, question)
-                print(answer)
                 await websocket.send_text(f"Bot: {answer}")
             except WebSocketDisconnect as e:
-                print("disconnected")
+                print("web socket disconnected")
                 break
+            except HTTPException as e:
+                print(e)
+                await websocket.send_text(str(e))
             except Exception as e:
                 print(f"Error processing request: {e}")
                 await websocket.send_text(f"Error: {str(e)}")
