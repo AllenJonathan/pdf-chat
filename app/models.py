@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Mapped, mapped_column, declarative_base
 from datetime import datetime
 
-engine = create_engine('sqlite:///database.dbpostgresql://quiz_app_db_k2qs_user:wy6xZp19zD0ZaS5QjTk8Qm52eXwH7HEa@dpg-ctg4v39u0jms73advgug-a/quiz_app_db_k2qs')
+engine = create_engine('postgresql://quiz_app_db_k2qs_user:wy6xZp19zD0ZaS5QjTk8Qm52eXwH7HEa@dpg-ctg4v39u0jms73advgug-a/quiz_app_db_k2qs')
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
