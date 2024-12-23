@@ -171,7 +171,7 @@ async def get(id: int):
     with Session() as session:
         print(session.query(Document).all())
     new_html = html.replace('document_id": 1', f'document_id": {id}')
-    new_html = new_html.replace("ws://localhost:port/ws", f"ws://localhost/ws/{id}")
+    new_html = new_html.replace("ws://localhost:port/ws", f"ws://localhost:{port}/ws/{id}")
     print(html)
     return HTMLResponse(new_html)
 
@@ -181,6 +181,10 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     
     await websocket.accept()
     session_context = {}
+
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Message text was: {data}")
 
     # Retrieve document text
     document = None
@@ -196,9 +200,6 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     else:
         await websocket.send_text(f'file: {document.filename}')
     
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f"Message text was: {data}")
     
     ratelimit = WebSocketRateLimiter(times=2, seconds=60)
 
