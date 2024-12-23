@@ -196,6 +196,10 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     else:
         await websocket.send_text(f'file: {document.filename}')
     
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Message text was: {data}")
+    
     ratelimit = WebSocketRateLimiter(times=2, seconds=60)
 
     try: 
